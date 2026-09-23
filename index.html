@@ -524,7 +524,7 @@
        ========================================================================== */
     .hero-section {
       min-height: 100vh;
-      min-height: 100dvh; /* Modern mobile viewport unit */
+      min-height: 100dvh;
       padding-top: clamp(100px, 14vw, 140px);
       padding-bottom: clamp(60px, 10vw, 90px);
       display: flex;
@@ -630,7 +630,7 @@
       transition: var(--transition-smooth);
       border: none;
       cursor: pointer;
-      min-height: 48px; /* Accessible tap target */
+      min-height: 48px;
       -webkit-tap-highlight-color: transparent;
     }
 
@@ -703,7 +703,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      touch-action: pan-y; /* Allows smooth mobile scrolling over 3D area */
+      touch-action: pan-y;
     }
 
     /* Canvas Element */
@@ -717,7 +717,7 @@
       z-index: 2;
       opacity: 0;
       transition: opacity 0.8s ease-in-out;
-      pointer-events: none; /* Allows natural drag/scroll across hero stage on mobile */
+      pointer-events: none;
     }
 
     #hero-canvas.canvas-visible {
@@ -736,38 +736,68 @@
       pointer-events: none;
     }
 
-    .fallback-shard {
-      width: min(240px, 50vw);
-      height: min(280px, 58vw);
-      background: linear-gradient(135deg, rgba(232, 40, 27, 0.2) 0%, rgba(10, 10, 10, 0.8) 60%),
-                  radial-gradient(circle at 30% 20%, rgba(232, 40, 27, 0.5) 0%, transparent 60%);
-      clip-path: polygon(50% 0%, 100% 75%, 85% 100%, 15% 100%, 0% 75%);
-      border: 1px solid rgba(232, 40, 27, 0.4);
-      box-shadow: 0 0 45px rgba(232, 40, 27, 0.2);
+    .fallback-logo-wrap {
       position: relative;
-      animation: floatFallback 6s ease-in-out infinite;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: min(340px, 85vw);
+      height: min(280px, 65vw);
     }
 
-    .fallback-shard::after {
-      content: "";
-      position: absolute;
-      inset: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      clip-path: polygon(50% 5%, 95% 72%, 82% 95%, 18% 95%, 5% 72%);
+    .fallback-logo-text {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--font-display);
+      font-size: clamp(2.2rem, 6vw, 3.4rem);
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      color: var(--text-white);
+      text-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+      z-index: 2;
     }
 
-    .fallback-ring {
-      position: absolute;
-      width: min(320px, 68vw);
-      height: min(320px, 68vw);
-      border: 1px dashed rgba(232, 40, 27, 0.25);
-      border-radius: 50%;
-      animation: spinRing 24s linear infinite;
+    .fallback-logo-text span {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(-70px) scale(0.85);
+      animation: fallbackLetterDrop 0.65s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    .fallback-logo-text span:nth-child(1) { animation-delay: 0.15s; }
+    .fallback-logo-text span:nth-child(2) { animation-delay: 0.45s; }
+    .fallback-logo-text span:nth-child(3) { animation-delay: 0.75s; }
+    .fallback-logo-text span:nth-child(4) { animation-delay: 1.05s; }
+    .fallback-logo-text span:nth-child(5) { animation-delay: 1.35s; }
+    .fallback-logo-text span:nth-child(6) { animation-delay: 1.65s; }
+
+    .fallback-logo-text .fallback-a {
+      color: var(--accent-red);
+      text-shadow: 0 0 25px var(--accent-red-glow);
+    }
+
+    @keyframes fallbackLetterDrop {
+      0% {
+        opacity: 0;
+        transform: translateY(-80px) scale(0.8);
+        filter: blur(4px);
+      }
+      75% {
+        opacity: 1;
+        transform: translateY(6px) scale(1.08);
+        filter: blur(0);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+      }
     }
 
     @keyframes floatFallback {
       0%, 100% { transform: translateY(0) rotate(0deg); }
-      50% { transform: translateY(-14px) rotate(2deg); }
+      50% { transform: translateY(-12px) rotate(1deg); }
     }
 
     @keyframes spinRing {
@@ -1402,8 +1432,11 @@
 
             <!-- Graceful Fallback Visual -->
             <div class="hero-fallback-visual" id="hero-fallback">
-              <div class="fallback-ring"></div>
-              <div class="fallback-shard"></div>
+              <div class="fallback-logo-wrap">
+                <div class="fallback-logo-text">
+                  <span>M</span><span class="fallback-a">Λ</span><span>T</span><span>R</span><span>I</span><span>X</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1821,7 +1854,14 @@
         initThreeScene();
       }
 
-      // 6. THREE.JS SCENE SETUP
+      // 6. THREE.JS SCENE SETUP & SEQUENTIAL LETTER DROP ENGINE
+      let logoGroup, letterObjects = [];
+      let particleSystem, redCoreLight, impactFlashLight;
+      let shockwavePool = [], activeShockwaves = [];
+      let sparkParticles, sparkGeo, sparkPositions, sparkVelocities, sparkAlphas, sparkColors;
+      let sequenceStartTime = 0;
+      let dropCompleted = false;
+
       function initThreeScene() {
         if (sceneInitialized || typeof THREE === 'undefined') return;
 
@@ -1834,8 +1874,8 @@
 
           // Scene & Camera
           scene = new THREE.Scene();
-          camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
-          camera.position.set(0, 0, 5.5);
+          camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
+          camera.position.set(0, 0, 7.2);
 
           // WebGL Renderer with Alpha & Clamped DPR
           renderer = new THREE.WebGLRenderer({
@@ -1850,124 +1890,273 @@
           renderer.setSize(width, height);
           renderer.setClearColor(0x000000, 0);
 
-          // Low-Poly Multifaceted Shard Geometry (Brand "Λ" Motif)
-          const shardGeometry = new THREE.BufferGeometry();
-          const vertices = new Float32Array([
-            // Front Face Left
-            0.0,  1.5,  0.4,
-           -1.1, -1.3,  0.3,
-            0.0, -0.4,  0.6,
+          // Master 3D Logo Group
+          logoGroup = new THREE.Group();
+          scene.add(logoGroup);
 
-            // Front Face Right
-            0.0,  1.5,  0.4,
-            0.0, -0.4,  0.6,
-            1.1, -1.3,  0.3,
+          // Extrude Geometry Settings for 3D Letters
+          const extrudeSettings = {
+            depth: 0.24,
+            bevelEnabled: true,
+            bevelSegments: 4,
+            steps: 1,
+            bevelSize: 0.025,
+            bevelThickness: 0.025
+          };
 
-            // Outer Left Edge
-            0.0,  1.5,  0.4,
-           -1.3, -1.2, -0.2,
-           -1.1, -1.3,  0.3,
+          // --- Premium Materials ---
+          const chromeMat = new THREE.MeshStandardMaterial({
+            color: 0xF0F0F5,
+            metalness: 0.88,
+            roughness: 0.18,
+            flatShading: false
+          });
 
-            // Outer Right Edge
-            0.0,  1.5,  0.4,
-            1.1, -1.3,  0.3,
-            1.3, -1.2, -0.2,
-
-            // Back Face Left
-            0.0,  1.4, -0.4,
-            0.0, -0.5, -0.3,
-           -1.3, -1.2, -0.2,
-
-            // Back Face Right
-            0.0,  1.4, -0.4,
-            1.3, -1.2, -0.2,
-            0.0, -0.5, -0.3,
-
-            // Bottom Inset Left
-            0.0, -0.4,  0.6,
-           -1.1, -1.3,  0.3,
-            0.0, -0.5, -0.3,
-
-            // Bottom Inset Right
-            0.0, -0.4,  0.6,
-            0.0, -0.5, -0.3,
-            1.1, -1.3,  0.3
-          ]);
-
-          shardGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-          shardGeometry.computeVertexNormals();
-
-          // Low-poly faceted material (Brand Red #E8281B)
-          const shardMaterial = new THREE.MeshStandardMaterial({
+          const redNeonMat = new THREE.MeshStandardMaterial({
             color: 0xE8281B,
-            metalness: 0.35,
-            roughness: 0.25,
-            flatShading: true,
-            side: THREE.DoubleSide
+            emissive: 0xB01208,
+            emissiveIntensity: 0.9,
+            metalness: 0.92,
+            roughness: 0.12
           });
 
-          shardMesh = new THREE.Mesh(shardGeometry, shardMaterial);
-          shardMesh.scale.set(1.15, 1.15, 1.15);
-          scene.add(shardMesh);
-
-          // Subtle Wireframe Accent overlay
-          const wireframeMaterial = new THREE.MeshBasicMaterial({
-            color: 0xFFFFFF,
-            wireframe: true,
+          const whiteEdgeMat = new THREE.LineBasicMaterial({
+            color: 0xffffff,
             transparent: true,
-            opacity: 0.12
+            opacity: 0.28
           });
-          wireframeMesh = new THREE.Mesh(shardGeometry, wireframeMaterial);
-          wireframeMesh.scale.set(1.16, 1.16, 1.16);
-          scene.add(wireframeMesh);
 
-          // Orbiting Minimal Wireframe Ring
-          const ringGeo = new THREE.TorusGeometry(2.0, 0.008, 6, 32);
-          const ringMat = new THREE.MeshBasicMaterial({
+          const redEdgeMat = new THREE.LineBasicMaterial({
+            color: 0xff3b30,
+            transparent: true,
+            opacity: 0.8
+          });
+
+          // --- 3D LETTER SHAPES ---
+          // 1. "M"
+          const shapeM = new THREE.Shape();
+          shapeM.moveTo(-0.48, -0.5);
+          shapeM.lineTo(-0.48, 0.5);
+          shapeM.lineTo(-0.24, 0.5);
+          shapeM.lineTo(0.0, 0.08);
+          shapeM.lineTo(0.24, 0.5);
+          shapeM.lineTo(0.48, 0.5);
+          shapeM.lineTo(0.48, -0.5);
+          shapeM.lineTo(0.26, -0.5);
+          shapeM.lineTo(0.26, 0.14);
+          shapeM.lineTo(0.0, -0.26);
+          shapeM.lineTo(-0.26, 0.14);
+          shapeM.lineTo(-0.26, -0.5);
+          shapeM.closePath();
+
+          // 2. "Λ" (Iconic Greek Lambda)
+          const shapeA = new THREE.Shape();
+          shapeA.moveTo(0.0, 0.54);
+          shapeA.lineTo(0.46, -0.5);
+          shapeA.lineTo(0.22, -0.5);
+          shapeA.lineTo(0.0, 0.04);
+          shapeA.lineTo(-0.22, -0.5);
+          shapeA.lineTo(-0.46, -0.5);
+          shapeA.closePath();
+
+          // 3. "T"
+          const shapeT = new THREE.Shape();
+          shapeT.moveTo(-0.38, 0.5);
+          shapeT.lineTo(0.38, 0.5);
+          shapeT.lineTo(0.38, 0.28);
+          shapeT.lineTo(0.12, 0.28);
+          shapeT.lineTo(0.12, -0.5);
+          shapeT.lineTo(-0.12, -0.5);
+          shapeT.lineTo(-0.12, 0.28);
+          shapeT.lineTo(-0.38, 0.28);
+          shapeT.closePath();
+
+          // 4. "R"
+          const shapeR = new THREE.Shape();
+          shapeR.moveTo(-0.38, -0.5);
+          shapeR.lineTo(-0.38, 0.5);
+          shapeR.lineTo(0.18, 0.5);
+          shapeR.bezierCurveTo(0.44, 0.5, 0.44, 0.05, 0.18, 0.05);
+          shapeR.lineTo(0.42, -0.5);
+          shapeR.lineTo(0.16, -0.5);
+          shapeR.lineTo(-0.02, 0.02);
+          shapeR.lineTo(-0.14, 0.02);
+          shapeR.lineTo(-0.14, -0.5);
+          shapeR.closePath();
+
+          const holeR = new THREE.Path();
+          holeR.moveTo(-0.14, 0.18);
+          holeR.lineTo(0.14, 0.18);
+          holeR.bezierCurveTo(0.24, 0.18, 0.24, 0.38, 0.14, 0.38);
+          holeR.lineTo(-0.14, 0.38);
+          holeR.closePath();
+          shapeR.holes.push(holeR);
+
+          // 5. "I"
+          const shapeI = new THREE.Shape();
+          shapeI.moveTo(-0.12, -0.5);
+          shapeI.lineTo(-0.12, 0.5);
+          shapeI.lineTo(0.12, 0.5);
+          shapeI.lineTo(0.12, -0.5);
+          shapeI.closePath();
+
+          // 6. "X"
+          const shapeX = new THREE.Shape();
+          shapeX.moveTo(-0.42, 0.5);
+          shapeX.lineTo(-0.16, 0.5);
+          shapeX.lineTo(0.0, 0.16);
+          shapeX.lineTo(0.16, 0.5);
+          shapeX.lineTo(0.42, 0.5);
+          shapeX.lineTo(0.14, 0.0);
+          shapeX.lineTo(0.42, -0.5);
+          shapeX.lineTo(0.16, -0.5);
+          shapeX.lineTo(0.0, -0.16);
+          shapeX.lineTo(-0.16, -0.5);
+          shapeX.lineTo(-0.42, -0.5);
+          shapeX.lineTo(-0.14, 0.0);
+          shapeX.closePath();
+
+          // Sequential Letter Drop Timing Table
+          const letterConfigs = [
+            { shape: shapeM, mat: chromeMat, x: -1.78, edgeMat: whiteEdgeMat, isRed: false, delay: 0.18 },
+            { shape: shapeA, mat: redNeonMat, x: -1.04, edgeMat: redEdgeMat, isRed: true, delay: 0.62 },
+            { shape: shapeT, mat: chromeMat, x: -0.34, edgeMat: whiteEdgeMat, isRed: false, delay: 1.06 },
+            { shape: shapeR, mat: chromeMat, x: 0.36, edgeMat: whiteEdgeMat, isRed: false, delay: 1.50 },
+            { shape: shapeI, mat: chromeMat, x: 0.98, edgeMat: whiteEdgeMat, isRed: false, delay: 1.94 },
+            { shape: shapeX, mat: chromeMat, x: 1.66, edgeMat: whiteEdgeMat, isRed: false, delay: 2.38 }
+          ];
+
+          letterObjects = [];
+          letterConfigs.forEach((cfg, idx) => {
+            const geom = new THREE.ExtrudeGeometry(cfg.shape, extrudeSettings);
+            geom.center();
+            const mesh = new THREE.Mesh(geom, cfg.mat);
+            mesh.position.set(cfg.x, 8.0, 0);
+            mesh.scale.set(0.001, 0.001, 0.001);
+
+            // Wireframe Edge Contour
+            const edges = new THREE.EdgesGeometry(geom, 22);
+            const line = new THREE.LineSegments(edges, cfg.edgeMat);
+            mesh.add(line);
+
+            logoGroup.add(mesh);
+
+            letterObjects.push({
+              mesh: mesh,
+              targetX: cfg.x,
+              targetY: 0,
+              dropHeight: 7.2,
+              delay: cfg.delay,
+              duration: 0.42,
+              isRed: cfg.isRed,
+              hasImpacted: false,
+              index: idx
+            });
+          });
+
+          // --- 3D SHOCKWAVE SYSTEM ---
+          for (let k = 0; k < 8; k++) {
+            const shockGeo = new THREE.PlaneGeometry(1.4, 0.06);
+            const shockMat = new THREE.MeshBasicMaterial({
+              color: 0xE8281B,
+              transparent: true,
+              opacity: 0,
+              side: THREE.DoubleSide
+            });
+            const shockLine = new THREE.Mesh(shockGeo, shockMat);
+            shockLine.visible = false;
+            logoGroup.add(shockLine);
+            shockwavePool.push(shockLine);
+          }
+
+          // --- 3D KINETIC IMPACT SPARKS ---
+          const MAX_SPARKS = 120;
+          sparkPositions = new Float32Array(MAX_SPARKS * 3);
+          sparkVelocities = new Float32Array(MAX_SPARKS * 3);
+          sparkAlphas = new Float32Array(MAX_SPARKS);
+          sparkColors = new Float32Array(MAX_SPARKS * 3);
+
+          sparkGeo = new THREE.BufferGeometry();
+          sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPositions, 3));
+          sparkGeo.setAttribute('color', new THREE.BufferAttribute(sparkColors, 3));
+
+          const sparkMat = new THREE.PointsMaterial({
+            size: 0.08,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.9,
+            blending: THREE.AdditiveBlending
+          });
+          sparkParticles = new THREE.Points(sparkGeo, sparkMat);
+          logoGroup.add(sparkParticles);
+
+          // Ambient 3D Cyber Particles
+          const particleCount = 70;
+          const particleGeo = new THREE.BufferGeometry();
+          const particlePos = new Float32Array(particleCount * 3);
+          for (let p = 0; p < particleCount * 3; p += 3) {
+            particlePos[p] = (Math.random() - 0.5) * 8;
+            particlePos[p + 1] = (Math.random() - 0.5) * 5;
+            particlePos[p + 2] = (Math.random() - 0.5) * 5;
+          }
+          particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+          const particleMat = new THREE.PointsMaterial({
             color: 0xE8281B,
+            size: 0.05,
             transparent: true,
-            opacity: 0.25
+            opacity: 0.45
           });
-          const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-          ringMesh.rotation.x = Math.PI / 2.8;
-          scene.add(ringMesh);
+          particleSystem = new THREE.Points(particleGeo, particleMat);
+          scene.add(particleSystem);
 
-          // Balanced Lighting
-          ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+          // --- CINEMATIC LIGHTING ---
+          ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
           scene.add(ambientLight);
 
-          pointLight = new THREE.PointLight(0xE8281B, 2.5, 12);
-          pointLight.position.set(2, 3, 4);
-          scene.add(pointLight);
+          const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
+          keyLight.position.set(4, 5, 5);
+          scene.add(keyLight);
 
-          const backLight = new THREE.PointLight(0xffffff, 0.8, 10);
-          backLight.position.set(-3, -2, -3);
-          scene.add(backLight);
+          redCoreLight = new THREE.PointLight(0xE8281B, 4.2, 10);
+          redCoreLight.position.set(-1.0, 0.2, 1.5);
+          scene.add(redCoreLight);
 
-          // Interactive Pointer / Touch Parallax
+          impactFlashLight = new THREE.PointLight(0xffffff, 0, 8);
+          impactFlashLight.position.set(0, 0.5, 2);
+          scene.add(impactFlashLight);
+
+          const rimLight = new THREE.DirectionalLight(0x708090, 1.2);
+          rimLight.position.set(-5, -3, -4);
+          scene.add(rimLight);
+
+          updateResponsiveScale(width);
+
+          // Pointer / Touch Parallax
           window.addEventListener('mousemove', (e) => {
             const normX = (e.clientX / window.innerWidth) * 2 - 1;
             const normY = -(e.clientY / window.innerHeight) * 2 + 1;
             targetRotationY = normX * 0.45;
-            targetRotationX = -normY * 0.35;
+            targetRotationX = -normY * 0.3;
           }, { passive: true });
 
-          // Gentle Touch drag response for mobile
           window.addEventListener('touchmove', (e) => {
             if (e.touches.length > 0) {
               const touch = e.touches[0];
               const normX = (touch.clientX / window.innerWidth) * 2 - 1;
               const normY = -(touch.clientY / window.innerHeight) * 2 + 1;
               targetRotationY = normX * 0.35;
-              targetRotationX = -normY * 0.25;
+              targetRotationX = -normY * 0.22;
             }
           }, { passive: true });
 
-          // Responsive Window Resize & Orientation Change
+          // Interactive Re-drop Trigger on Click or Tap
+          container.addEventListener('click', () => {
+            triggerDropSequence();
+          });
+
           window.addEventListener('resize', onWindowResize, { passive: true });
           window.addEventListener('orientationchange', onWindowResize, { passive: true });
 
-          // Smooth Cross-Fade
           canvasElement.classList.add('canvas-visible');
           if (fallbackElement) {
             fallbackElement.style.opacity = '0';
@@ -1975,11 +2164,82 @@
           }
 
           sceneInitialized = true;
+          triggerDropSequence();
           startRenderLoop();
 
         } catch (err) {
           console.warn('3D initialization bypassed:', err);
         }
+      }
+
+      // Reset and trigger single-letter drop cascade
+      function triggerDropSequence() {
+        sequenceStartTime = performance.now();
+        dropCompleted = false;
+        if (letterObjects) {
+          letterObjects.forEach(letter => {
+            letter.hasImpacted = false;
+            letter.mesh.position.set(letter.targetX, letter.dropHeight, 0);
+            letter.mesh.scale.set(0.001, 0.001, 0.001);
+            letter.mesh.rotation.set(0, 0, 0);
+          });
+        }
+      }
+
+      // Spawn Expanding Shockwave on Ground
+      function triggerShockwave(x, isRed) {
+        for (let r of shockwavePool) {
+          if (!r.visible) {
+            r.visible = true;
+            r.position.set(x, -0.65, 0.1);
+            r.scale.set(0.1, 1.0, 1.0);
+            r.material.color.setHex(isRed ? 0xE8281B : 0xFFFFFF);
+            r.material.opacity = isRed ? 0.95 : 0.65;
+            activeShockwaves.push({ ring: r, birthTime: performance.now() });
+            break;
+          }
+        }
+      }
+
+      // Spawn Fountain of Kinetic 3D Sparks
+      function triggerSparks(x, isRed) {
+        if (!sparkPositions) return;
+        const count = 18;
+        const startIdx = Math.floor(Math.random() * (120 - count));
+        const colorHex = isRed ? [0.91, 0.16, 0.11] : [1.0, 0.95, 0.85];
+
+        for (let i = 0; i < count; i++) {
+          const idx = (startIdx + i) * 3;
+          sparkPositions[idx] = x + (Math.random() - 0.5) * 0.2;
+          sparkPositions[idx + 1] = -0.55 + Math.random() * 0.1;
+          sparkPositions[idx + 2] = (Math.random() - 0.5) * 0.3;
+
+          sparkVelocities[idx] = (Math.random() - 0.5) * 2.8;
+          sparkVelocities[idx + 1] = 2.2 + Math.random() * 2.5;
+          sparkVelocities[idx + 2] = (Math.random() - 0.5) * 2.8;
+
+          sparkAlphas[startIdx + i] = 1.0;
+
+          sparkColors[idx] = colorHex[0];
+          sparkColors[idx + 1] = colorHex[1];
+          sparkColors[idx + 2] = colorHex[2];
+        }
+
+        sparkGeo.attributes.position.needsUpdate = true;
+        sparkGeo.attributes.color.needsUpdate = true;
+      }
+
+      function updateResponsiveScale(width) {
+        if (!logoGroup) return;
+        let scale = 1.0;
+        if (width < 420) {
+          scale = 0.72;
+        } else if (width < 600) {
+          scale = 0.85;
+        } else if (width < 900) {
+          scale = 0.95;
+        }
+        logoGroup.scale.set(scale, scale, scale);
       }
 
       function onWindowResize() {
@@ -1992,9 +2252,10 @@
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
         renderer.setSize(width, height);
+        updateResponsiveScale(width);
       }
 
-      // 7. RENDER LOOP
+      // 7. RENDER & PHYSICS LOOP
       let clock = null;
 
       function startRenderLoop() {
@@ -2017,18 +2278,125 @@
       function render() {
         if (!isRendering) return;
 
-        const time = clock ? clock.getElapsedTime() : Date.now() * 0.001;
+        const now = performance.now();
+        const time = clock ? clock.getElapsedTime() : now * 0.001;
+        const seqElapsed = (now - sequenceStartTime) * 0.001;
 
-        if (shardMesh) {
-          // Ambient floating & rotation
-          shardMesh.position.y = Math.sin(time * 1.2) * 0.12;
-          shardMesh.rotation.y += (targetRotationY + Math.sin(time * 0.6) * 0.2 - shardMesh.rotation.y) * 0.05;
-          shardMesh.rotation.x += (targetRotationX + Math.cos(time * 0.8) * 0.15 - shardMesh.rotation.x) * 0.05;
-          shardMesh.rotation.z = Math.sin(time * 0.5) * 0.08;
+        if (logoGroup) {
+          // Master group tilt & floating
+          logoGroup.rotation.y += (targetRotationY + Math.sin(time * 0.5) * 0.12 - logoGroup.rotation.y) * 0.06;
+          logoGroup.rotation.x += (targetRotationX + Math.cos(time * 0.7) * 0.08 - logoGroup.rotation.x) * 0.06;
+          logoGroup.rotation.z = Math.sin(time * 0.6) * 0.03;
 
-          if (wireframeMesh) {
-            wireframeMesh.position.copy(shardMesh.position);
-            wireframeMesh.rotation.copy(shardMesh.rotation);
+          let allSettled = true;
+
+          // Process Each Letter's Drop & Physics
+          letterObjects.forEach((letter) => {
+            const tLocal = seqElapsed - letter.delay;
+
+            if (tLocal < 0) {
+              // 1. Waiting in queue (above viewport)
+              letter.mesh.position.set(letter.targetX, letter.dropHeight, 0);
+              letter.mesh.scale.set(0.001, 0.001, 0.001);
+              allSettled = false;
+            } else if (tLocal < letter.duration) {
+              // 2. Plunging downward with acceleration
+              const progress = tLocal / letter.duration;
+              const fallCurve = Math.pow(progress, 2.6); // Gravity ease-in
+              letter.mesh.position.y = letter.dropHeight * (1.0 - fallCurve);
+              letter.mesh.scale.setScalar(Math.min(1.0, progress * 4.0));
+              
+              // Dynamic aerial spin while falling
+              const spinDir = letter.index % 2 === 0 ? 1 : -1;
+              letter.mesh.rotation.x = (1.0 - progress) * 0.65 * spinDir;
+              letter.mesh.rotation.z = (1.0 - progress) * 0.45 * -spinDir;
+              allSettled = false;
+            } else {
+              // 3. Impact & Elastic Rebound
+              const bounceTime = tLocal - letter.duration;
+
+              if (!letter.hasImpacted) {
+                letter.hasImpacted = true;
+                triggerShockwave(letter.targetX, letter.isRed);
+                triggerSparks(letter.targetX, letter.isRed);
+
+                // Flash light on impact
+                if (impactFlashLight) {
+                  impactFlashLight.color.setHex(letter.isRed ? 0xE8281B : 0xffffff);
+                  impactFlashLight.intensity = letter.isRed ? 5.0 : 3.0;
+                }
+              }
+
+              // Elastic bounce dampening formula
+              const bounceAmp = Math.sin(bounceTime * 18.0) * Math.exp(-bounceTime * 5.0) * 0.85;
+              const squash = 1.0 - Math.sin(bounceTime * 18.0) * Math.exp(-bounceTime * 6.5) * 0.25;
+
+              if (seqElapsed > 3.0) {
+                // Settle into continuous harmonic levitation
+                const levitate = Math.sin(time * 1.8 + letter.index * 0.45) * 0.06;
+                letter.mesh.position.y = letter.targetY + levitate;
+                letter.mesh.rotation.set(0, 0, 0);
+                letter.mesh.scale.set(1, 1, 1);
+              } else {
+                letter.mesh.position.y = letter.targetY + Math.max(0, bounceAmp);
+                letter.mesh.scale.set(1.0 + (1.0 - squash) * 0.4, squash, 1.0);
+                letter.mesh.rotation.x *= 0.82;
+                letter.mesh.rotation.z *= 0.82;
+                allSettled = false;
+              }
+            }
+          });
+
+          // Dim impact flash light over time
+          if (impactFlashLight && impactFlashLight.intensity > 0) {
+            impactFlashLight.intensity *= 0.88;
+            if (impactFlashLight.intensity < 0.05) impactFlashLight.intensity = 0;
+          }
+
+          // Animate Shockwave Lines
+          for (let i = activeShockwaves.length - 1; i >= 0; i--) {
+            const item = activeShockwaves[i];
+            const age = (now - item.birthTime) * 0.001;
+            if (age > 0.65) {
+              item.ring.visible = false;
+              activeShockwaves.splice(i, 1);
+            } else {
+              const progress = age / 0.65;
+              const scale = 0.1 + progress * 3.2;
+              item.ring.scale.set(scale, 1.0, 1.0);
+              item.ring.material.opacity = (1.0 - progress) * 0.85;
+            }
+          }
+
+          // Animate Kinetic Sparks
+          if (sparkPositions) {
+            for (let s = 0; s < 120; s++) {
+              if (sparkAlphas[s] > 0) {
+                const sIdx = s * 3;
+                sparkPositions[sIdx] += sparkVelocities[sIdx] * 0.016;
+                sparkPositions[sIdx + 1] += sparkVelocities[sIdx + 1] * 0.016;
+                sparkPositions[sIdx + 2] += sparkVelocities[sIdx + 2] * 0.016;
+
+                sparkVelocities[sIdx + 1] -= 9.8 * 0.016 * 0.6; // Gravity on sparks
+                sparkAlphas[s] -= 0.025;
+
+                if (sparkAlphas[s] <= 0) {
+                  sparkPositions[sIdx + 1] = -100; // Move out of view
+                }
+              }
+            }
+            sparkGeo.attributes.position.needsUpdate = true;
+          }
+
+          // Pulsing Core Red Light near "Λ"
+          if (redCoreLight) {
+            redCoreLight.intensity = 3.8 + Math.sin(time * 2.8) * 1.2;
+          }
+
+          // Ambient Particle Drift
+          if (particleSystem) {
+            particleSystem.rotation.y = time * 0.03;
+            particleSystem.rotation.x = Math.sin(time * 0.02) * 0.1;
           }
         }
 
